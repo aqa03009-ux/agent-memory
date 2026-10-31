@@ -1,0 +1,7 @@
+# Optional: media embeddings (images / audio / video)
+# Install with: pip install -r requirements-media.txt
+# System dependency: ffmpeg
+
+pillow>=10.0
+soundfile>=0.12
+librosa>=0.10

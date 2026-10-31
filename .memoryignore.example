@@ -1,0 +1,7 @@
+# Paths excluded from the search index (one glob or directory prefix per line).
+# Rule: a raw data corpus is not memory; keep its note separate.
+#
+# Example: 427 YouTube transcripts (17 MB) that would drown out every search.
+#
+# projects/youtube-notes/transcripts
+# projects/youtube-notes/_index.md

@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Syntax check
+        run: python -m py_compile memory.py
+
+      - name: CLI help
+        run: ./memory.py --help
+
+      - name: Reindex without embedding model (keyword fallback)
+        run: |
+          cp -r examples/vault /tmp/vault
+          AGENT_MEMORY_VAULT=/tmp/vault AGENT_MEMORY_DB=/tmp/vault/.vectors/memory.db \
+            ./memory.py reindex
+
+      - name: Keyword search returns the expected note
+        run: |
+          AGENT_MEMORY_VAULT=/tmp/vault AGENT_MEMORY_DB=/tmp/vault/.vectors/memory.db \
+            ./memory.py search "lazy model" --fts > /tmp/out.txt
+          grep -q "Example decision" /tmp/out.txt
+
+      - name: Session handoff queue
+        run: |
+          AGENT_MEMORY_VAULT=/tmp/vault AGENT_MEMORY_DB=/tmp/vault/.vectors/memory.db \
+            ./memory.py open | grep -q "Finish the index migration"
+          AGENT_MEMORY_VAULT=/tmp/vault AGENT_MEMORY_DB=/tmp/vault/.vectors/memory.db \
+            ./memory.py claim sessions/2026-01-01-example-handoff.md
+          AGENT_MEMORY_VAULT=/tmp/vault AGENT_MEMORY_DB=/tmp/vault/.vectors/memory.db \
+            ./memory.py open | grep -q "no open handoff notes"

@@ -1,0 +1,9 @@
+# Core engine
+sentence-transformers>=3.0
+numpy>=1.26
+
+# torch is intentionally not pinned: install the build that matches your
+# accelerator first (CUDA, ROCm, or CPU), then install this file.
+#
+#   CPU:   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   ROCm:  https://pytorch.org/get-started/locally/
