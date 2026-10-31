@@ -55,7 +55,7 @@
     </g>
     <g transform="rotate(4 250 205)">
       <rect x="170" y="108" width="164" height="196" rx="14" fill="#101b2e" stroke="#38507a"/>
-      <text x="188" y="136" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#c9d8ef" letter-spacing="0.2"># TTS setup</text>
+      <text x="188" y="136" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#c9d8ef" letter-spacing="0.2"># Setup notes</text>
       <rect x="188" y="152" width="118" height="5" rx="2.5" fill="#8aa3c0" opacity="0.45"/>
       <rect x="188" y="168" width="102" height="5" rx="2.5" fill="#8aa3c0" opacity="0.35"/>
       <rect x="188" y="184" width="126" height="5" rx="2.5" fill="#8aa3c0" opacity="0.30"/>

@@ -11,7 +11,7 @@ Commands:
   reindex [--dim 256] [--with-images]    scan the vault, cache embeddings
   search "query" [--top 3] [--full]      token-cheap summary (default)
   show <path>                            print a full note
-  list [--tag tts]                       list notes
+  list [--tag setup]                   list notes
   add --title .. --tags .. --file .. [--to setups|projects|daily]
   graph                                  write the wikilink+tag graph to relations.md
   assets                                 inventory media under assets/
@@ -129,7 +129,7 @@ def _is_oom(e) -> bool:
 
 def _encode_resilient(model, texts):
     """Embed in slices; on OOM halve the batch and retry the same slice.
-    Why: when another job (TTS/video/ComfyUI) holds the GPU, a single large
+    Why: when another GPU job (training or inference) holds the device, a single large
     encode call OOMs on the per-layer projection temporaries and the whole
     reindex used to die. Now it keeps shrinking the batch and finishes."""
     import numpy as _np

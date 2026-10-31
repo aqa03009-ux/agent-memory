@@ -7,9 +7,9 @@ tags: #decision #architecture #resources
 
 ## Context
 
-The machine has 16 GB of RAM and a GPU shared with TTS, video, and training jobs.
-Keeping a 0.6B embedding model resident costs roughly 1.2 GB of RAM and, on the
-GPU path, ~2.5 GB of VRAM.
+The machine has 16 GB of RAM and a GPU shared with other workloads (training,
+speech, video). Keeping a 0.6B embedding model resident costs roughly 1.2 GB of
+RAM and, on the GPU path, ~2.5 GB of VRAM.
 
 ## Decision
 

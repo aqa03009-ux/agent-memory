@@ -176,9 +176,9 @@ vault/
 Every note is plain Markdown:
 
 ```markdown
-# TTS setup
+# Local search setup
 
-tags: #tts #setup #local
+tags: #setup #search #local
 
 Details here. Link related notes with [[decisions/model-lifecycle]].
 ```
