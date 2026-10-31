@@ -20,6 +20,15 @@ jobs:
       - name: CLI help
         run: ./memory.py --help
 
+      - name: Check SQLite FTS5
+        run: |
+          python - <<'EOF'
+          import sqlite3
+          conn = sqlite3.connect(":memory:")
+          conn.execute("CREATE VIRTUAL TABLE t USING fts5(x)")
+          print("FTS5 available")
+          EOF
+
       - name: Reindex without embedding model (keyword fallback)
         run: |
           cp -r examples/vault /tmp/vault

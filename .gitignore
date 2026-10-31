@@ -1,10 +1,12 @@
 # Derived index — regenerate with `memory.py reindex`
 .vectors/
 *.db
+relations.md
 
 # Python
 __pycache__/
 *.pyc
+.venv/
 
 # Obsidian local state
 .obsidian/workspace.json

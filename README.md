@@ -29,7 +29,7 @@
 </p>
 
 > **The idea:** your notes are the database. The index is disposable. The
-> embedding model is a short-lived subprocess, not a resident service.
+> embedding model is loaded on demand and released, not a resident service.
 
 ---
 
@@ -114,6 +114,11 @@ export AGENT_MEMORY_VAULT="$PWD/examples/vault"
 The first `reindex` downloads the embedding model (~1.2 GB) and embeds the
 notes. Later runs only touch changed files.
 
+> If you have an accelerator, install its torch build **before**
+> `pip install -r requirements.txt` (see the GPU / ROCm notes below). The
+> default PyPI wheel can be a multi-gigabyte CUDA download even on CPU-only
+> machines.
+
 <details>
 <summary><strong>GPU / ROCm notes</strong></summary>
 
@@ -138,13 +143,14 @@ For ROCm, install the matching torch build first, then
 |---|---|
 | `memory.py reindex` | Scan the vault, embed new/changed notes |
 | `memory.py reindex --force` | Rebuild the whole index |
+| `memory.py reindex --dim 512` | Change the MRL dimension (forces a full rebuild) |
 | `memory.py reindex --with-images` | Also embed `assets/images/*` |
 | `memory.py reindex --with-audio` / `--with-video` | Media embeddings (needs a multimodal model) |
 | `memory.py search "query"` | Hybrid search, token-cheap summary |
 | `memory.py search "query" --full --top 5` | Full text, five results |
 | `memory.py search "query" --semantic` | Force semantic retrieval |
 | `memory.py search "query" --fts` | Keyword only; never opens the model |
-| `memory.py show setups/example.md` | Print a note |
+| `memory.py show setups/example-setup.md` | Print a note |
 | `memory.py list --tag setup` | List notes by tag |
 | `memory.py add --title "..." --tags "..." --file note.md --to decisions` | Add a note |
 | `memory.py graph` | Write `relations.md` from links and tags |
@@ -173,6 +179,9 @@ vault/
 └── .vectors/memory.db   # derived index (git-ignored)
 ```
 
+Copy `.memoryignore.example` to `.memoryignore` when you want to exclude raw
+corpora (transcripts, logs) from retrieval.
+
 Every note is plain Markdown:
 
 ```markdown
@@ -180,7 +189,7 @@ Every note is plain Markdown:
 
 tags: #setup #search #local
 
-Details here. Link related notes with [[decisions/model-lifecycle]].
+Details here. Link related notes with [[decisions/example-decision]].
 ```
 
 ## MCP server
@@ -206,7 +215,11 @@ Details here. Link related notes with [[decisions/model-lifecycle]].
   "mcp": {
     "memory": {
       "type": "local",
-      "command": ["/absolute/path/to/memory.py", "mcp"],
+      "command": [
+        "/absolute/path/to/.venv/bin/python",
+        "/absolute/path/to/memory.py",
+        "mcp"
+      ],
       "environment": {
         "AGENT_MEMORY_VAULT": "/home/you/memory"
       },
@@ -225,8 +238,8 @@ Details here. Link related notes with [[decisions/model-lifecycle]].
 {
   "mcpServers": {
     "memory": {
-      "command": "/absolute/path/to/memory.py",
-      "args": ["mcp"],
+      "command": "/absolute/path/to/.venv/bin/python",
+      "args": ["/absolute/path/to/memory.py", "mcp"],
       "env": { "AGENT_MEMORY_VAULT": "/home/you/memory" }
     }
   }
@@ -235,15 +248,17 @@ Details here. Link related notes with [[decisions/model-lifecycle]].
 
 </details>
 
-The server holds no model in memory. A tool call that needs embeddings loads
-the model inside the call and releases it when the call ends.
+The model is loaded inside the tool call and unloaded when the call ends, so an
+idle MCP server holds no model in memory. Set `AGENT_MEMORY_MCP_KEEP_WARM=1` if
+you prefer to keep it warm between calls.
 
 ## Session handoffs
 
 `memory.py open` lists handoff notes that are still unclaimed.
 `memory.py claim` rewrites the note's `status:` line to
 `claimed (<timestamp>)`, so two agents never pick up the same task. Notes using
-the original Turkish marker (`durum: devralindi`) are also recognized.
+the original Turkish marker (`durum: devralındı` or `devralindi`) are also
+recognized.
 
 ```markdown
 # Finish the index migration
@@ -267,10 +282,11 @@ session: abc123
 | `AGENT_MEMORY_DB` | `$VAULT/.vectors/memory.db` | SQLite index |
 | `AGENT_MEMORY_MODEL` | `Qwen/Qwen3-Embedding-0.6B` | Sentence-transformers model |
 | `AGENT_MEMORY_DIM` | `256` | MRL truncation dimension |
-| `AGENT_MEMORY_DEVICE` | `cpu` | `cpu`, `auto`, or any torch device |
-| `AGENT_MEMORY_QUERY_INSTRUCT` | Qwen3 instruction | Query-side prefix |
+| `AGENT_MEMORY_DEVICE` | `cpu` | A torch device (`cpu`, `cuda:1`, `mps`) or `auto` |
+| `AGENT_MEMORY_QUERY_INSTRUCT` | Qwen3 instruction | Query-side prefix (applied when the model id contains `qwen`) |
 | `AGENT_MEMORY_CHUNK` | `16` | Documents per embedding slice |
 | `AGENT_MEMORY_BATCH` | `8` | Batch size inside a slice |
+| `AGENT_MEMORY_MCP_KEEP_WARM` | `0` | `1` keeps the model loaded between MCP tool calls |
 
 Using a different model? Set `AGENT_MEMORY_MODEL` and clear
 `AGENT_MEMORY_QUERY_INSTRUCT` if it does not use query instructions. Changing
@@ -288,9 +304,12 @@ vectors live in a different space.
   keyword mode. If a vector is stale, it is dropped rather than silently kept.
 - **One reindex at a time.** A `flock` on `reindex.lock` prevents
   plugin-triggered background runs from stepping on each other.
-- **Long notes are truncated, not chunked.** The first 8,000 characters are
-  indexed and the first 4,000 embedded. This is deliberate for note-sized
-  documents; for books, split them into notes.
+- **All vault paths are contained.** `show`, `add`, and `claim` resolve their
+  arguments and reject absolute paths or `..` traversal, so a prompt-injected
+  note cannot turn an MCP tool into an arbitrary file read or write.
+- **Long notes are indexed in full.** Embeddings cover the first 4,000
+  characters, which is deliberate for note-sized documents; for books, split
+  them into notes.
 
 ## Limitations
 
@@ -300,8 +319,11 @@ vectors live in a different space.
   are fine).
 - Media embeddings need a multimodal model (e.g. `google/embeddinggemma-2`)
   plus `pillow`, `soundfile`, `librosa`, and `ffmpeg`. The text path does not.
-- Tested on Linux, Python 3.11+, with Qwen3-Embedding-0.6B. The design is
-  model-agnostic, but the MRL and instruction defaults are Qwen-specific.
+  Text and media share one vector space, so switching models requires a full
+  reindex.
+- Tested on Linux with Python 3.11 and 3.12 (CI runs 3.12), using
+  Qwen3-Embedding-0.6B. The design is model-agnostic, but the MRL and
+  instruction defaults are Qwen-specific.
 
 ## License
 
